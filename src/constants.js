@@ -1,0 +1,1 @@
+export const DBNAME = "db_backendwithammari"
