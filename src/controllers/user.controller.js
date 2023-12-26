@@ -4,6 +4,7 @@ import ApiResponse from "../utils/ApiResponse.js";
 import { User } from "../models/user.model.js";
 import uploadOnCloudinary from "../utils/cloudinary.js";
 import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
 
 // generate tokens
 const generateAccessAndRefreshTokens = async (userId) => {
@@ -367,6 +368,7 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
             }
         }
     ])
+    //console.log(channel);
 
     if (!channel?.length) {
         throw new ApiError(404, "Channel Not Exists")
@@ -381,11 +383,65 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
                 "User Channel Fetched Successfully"
             )
         )
+})
 
+const getWatchHistory = asyncHandler(async (req, res) => {
+    const user = User.aggregate([
+        {
+            $match: {
+                _id: new mongoose.Types.ObjectId(req.user._id)
+            }
+        },
+        {
+            $lookup: {
+                from: "videos",
+                localField: "watchHistory",
+                foreignField: "_id",
+                as: "watchHistory",
+                pipeline: [
+                    {
+                        $lookup: {
+                            from: "users",
+                            localField: "owner",
+                            foreignField: "_id",
+                            as: "owner",
+                            pipeline: [
+                                {
+                                    $project: {
+                                        fullName: 1,
+                                        userName: 1,
+                                        avatar: 1
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        //just for frontend purpose check in both cases nested pipelines
+                        $addFields: {
+                            owner: {
+                                $first: "$owner"
+                            }
+                        }
 
+                    }
+                ]
+            }
+
+        }
+
+    ])
+
+    return res
+        .status(200)
+        .json(new ApiResponse(
+            200,
+            user[0].watchHistory,
+            "User history fetched Successfully"
+        ))
 })
 
 
 export {
-    registerUser, loginUser, logoutUser, refreshAccessToken, changeCurrentPassword, getCurrentUser, updateAccountDetails, updateUserAvatar, updateCoverImage, getUserChannelProfile
+    registerUser, loginUser, logoutUser, refreshAccessToken, changeCurrentPassword, getCurrentUser, updateAccountDetails, updateUserAvatar, updateCoverImage, getUserChannelProfile, getWatchHistory
 };
