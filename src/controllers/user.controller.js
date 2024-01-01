@@ -32,20 +32,24 @@ const registerUser = asyncHandler(async (req, res) => {
     const { fullName, email, userName, password } = req.body;
 
     // Validate form data
-    if ([fullName, email, userName, password].some((field) => field?.trim() === "")) {
+    if ([fullName, email, userName, password]
+        .some((field) => field?.trim() === "")) {
         throw new ApiError(400, "Please fill all the fields");
     }
 
     // Check if user already exists
-    const existedUser = await User.findOne({
-        $or: [{ email }, { userName }]
-    });
+    const existedUser = await User.findOne(
+        {
+            $or: [{ email }, { userName }]
+        }
+    );
     if (existedUser) {
         throw new ApiError(409, "User already exists with the email or username");
     }
 
     // Receive avatar and cover
     const avatarLocalPath = req.files?.avatar[0]?.path;
+
     let coverImageLocalPath;
     if (req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0) {
         coverImageLocalPath = req.files.coverImage[0].path;
@@ -168,7 +172,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
 
     const incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken
     if (!incomingRefreshToken) {
-        throw new ApiError(401, "unauthorized reqwest")
+        throw new ApiError(401, "unauthorized request")
     }
 
     try {
@@ -239,7 +243,7 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
     const { fullName, email } = req.body
 
     if (!fullName || !email) {
-        throw new ApiError(400, "Please provide full name and email")
+        throw new ApiError(400, "Please provide full name or email")
     }
     const user = await User.findByIdAndUpdate(
         req.user?._id,
