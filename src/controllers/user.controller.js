@@ -6,7 +6,7 @@ import uploadOnCloudinary from "../utils/cloudinary.js";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 
-// generate tokens
+//! generate tokens
 const generateAccessAndRefreshTokens = async (userId) => {
     try {
         const user = await User.findById(userId);
@@ -25,7 +25,7 @@ const generateAccessAndRefreshTokens = async (userId) => {
 
 }
 
-// register user
+//! register user
 const registerUser = asyncHandler(async (req, res) => {
 
     // Extract form data
@@ -92,7 +92,7 @@ const registerUser = asyncHandler(async (req, res) => {
 }
 );
 
-// login user
+//! login user
 const loginUser = asyncHandler(async (req, res) => {
 
     const { email, userName, password } = req.body;
@@ -141,14 +141,14 @@ const loginUser = asyncHandler(async (req, res) => {
 
 })
 
-// logout user
+//! logout user
 const logoutUser = asyncHandler(async (req, res) => {
 
     await User.findByIdAndUpdate(
         req.user._id,
         {
-            $set: {
-                refreshToken: undefined
+            $unset: {
+                refreshToken: 1
             }
         },
         {
@@ -167,7 +167,7 @@ const logoutUser = asyncHandler(async (req, res) => {
         .json(new ApiResponse(200, {}, "Logged out successfully"))
 })
 
-// refresh accesstoken
+//! refresh accesstoken
 const refreshAccessToken = asyncHandler(async (req, res) => {
 
     const incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken
@@ -206,7 +206,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
 
 })
 
-// change password
+//! change password
 const changeCurrentPassword = asyncHandler(async (req, res) => {
 
     const { oldPassword, newPassword } = req.body
@@ -230,15 +230,15 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
 
 })
 
-// get Current User
+//! get Current User
 const getCurrentUser = asyncHandler(async (req, res) => {
-    // the middleware is passed through this so it will have req.user
+    // the jwt middleware is passed through this so it will have req.user
     return res
         .status(200)
         .json(new ApiResponse(200, req.user, "Current user fetched Successfully"))
 })
 
-// update account details
+//! update account details
 const updateAccountDetails = asyncHandler(async (req, res) => {
     const { fullName, email } = req.body
 
@@ -262,7 +262,7 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
 
 })
 
-// change avatar
+//! change avatar
 const updateUserAvatar = asyncHandler(async (req, res) => {
 
     const avatarLocalPath = req.file?.path
@@ -286,7 +286,7 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
     ).select("-password")
 })
 
-// change coverImage
+//! change coverImage
 const updateCoverImage = asyncHandler(async (req, res) => {
 
     const coverImageLocalPath = req.file?.path
@@ -310,14 +310,14 @@ const updateCoverImage = asyncHandler(async (req, res) => {
     ).select("-password")
 })
 
-// channel 
+//! channel 
 const getUserChannelProfile = asyncHandler(async (req, res) => {
     const { userName } = req.params
     if (!userName?.trim()) {
         throw new ApiError(400, "Please provide a user name")
     }
 
-    const channel = User.aggregate([
+    const channel = await User.aggregate([
         {
             $match: {
                 userName: userName?.toLowerCase()
@@ -372,7 +372,7 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
             }
         }
     ])
-    //console.log(channel);
+    // console.log(channel);
 
     if (!channel?.length) {
         throw new ApiError(404, "Channel Not Exists")
@@ -389,9 +389,9 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
         )
 })
 
-// watch History
+//! watch History
 const getWatchHistory = asyncHandler(async (req, res) => {
-    const user = User.aggregate([
+    const user = await User.aggregate([
         {
             $match: {
                 _id: new mongoose.Types.ObjectId(req.user._id)
@@ -447,6 +447,44 @@ const getWatchHistory = asyncHandler(async (req, res) => {
 })
 
 
+//! upload video
+const uploadVideo = asyncHandler(async (req, res) => {
+    const { videoFile, title, thumbnail, description } = req.body
+
+    if ([videoFile, title, thumbnail, description]
+        .some((field) => field?.trim() === "")) {
+        throw new ApiError(400, "Please fill all the fields")
+    }
+
+    const user = await User.findOne(req.user?._id)
+    if (!user) {
+        throw new ApiError(404, "User not found")
+    }
+
+    const videoLocalPath = req.file?.videoFile?.path[0]
+    const thumbnailLocalPath = req.file?.thumbnail?.path[0]
+
+    if (!videoLocalPath) {
+        throw new ApiError(400, "Video file and Thumbnail not found")
+    }
+    if (!thumbnailLocalPath) {
+        throw new ApiError(400, "Thumbnail not found")
+    }
+
+    const video = await uploadOnCloudinary(videoLocalPath)
+    const videoThumbnail = await uploadOnCloudinary(thumbnailLocalPath)
+
+    if (!video) {
+        throw new ApiError(400, "Video upload failed")
+    }
+    if (!videoThumbnail) {
+        throw new ApiError(400, "Thumbnail upload failed")
+    }
+
+
+
+})
+
 
 export {
     registerUser,
@@ -459,5 +497,6 @@ export {
     updateUserAvatar,
     updateCoverImage,
     getUserChannelProfile,
-    getWatchHistory
+    getWatchHistory,
+    uploadVideo
 };
