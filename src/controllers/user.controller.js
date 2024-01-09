@@ -447,44 +447,6 @@ const getWatchHistory = asyncHandler(async (req, res) => {
 })
 
 
-//! upload video
-const uploadVideo = asyncHandler(async (req, res) => {
-    const { videoFile, title, thumbnail, description } = req.body
-
-    if ([videoFile, title, thumbnail, description]
-        .some((field) => field?.trim() === "")) {
-        throw new ApiError(400, "Please fill all the fields")
-    }
-
-    const user = await User.findOne(req.user?._id)
-    if (!user) {
-        throw new ApiError(404, "User not found")
-    }
-
-    const videoLocalPath = req.file?.videoFile?.path[0]
-    const thumbnailLocalPath = req.file?.thumbnail?.path[0]
-
-    if (!videoLocalPath) {
-        throw new ApiError(400, "Video file and Thumbnail not found")
-    }
-    if (!thumbnailLocalPath) {
-        throw new ApiError(400, "Thumbnail not found")
-    }
-
-    const video = await uploadOnCloudinary(videoLocalPath)
-    const videoThumbnail = await uploadOnCloudinary(thumbnailLocalPath)
-
-    if (!video) {
-        throw new ApiError(400, "Video upload failed")
-    }
-    if (!videoThumbnail) {
-        throw new ApiError(400, "Thumbnail upload failed")
-    }
-
-
-
-})
-
 
 export {
     registerUser,
