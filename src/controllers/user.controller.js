@@ -460,5 +460,4 @@ export {
     updateCoverImage,
     getUserChannelProfile,
     getWatchHistory,
-    uploadVideo
 };
