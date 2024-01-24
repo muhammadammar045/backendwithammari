@@ -75,6 +75,10 @@ const getVideoById = asyncHandler(async (req, res) => {
 
     const { videoId } = req.params
 
+    if (!videoId.trim() || !isValidObjectId(videoId)) {
+        throw new ApiError(400, "Invalid video id")
+    }
+
 
     const video = await Video.findById(videoId)
     if (!video) {
@@ -93,6 +97,9 @@ const updateVideo = asyncHandler(async (req, res) => {
 
     const { videoId } = req.params
 
+    if (!videoId.trim() || !isValidObjectId(videoId)) {
+        throw new ApiError(400, "Invalid video id")
+    }
 
     const video = await Video.findById(videoId)
     if (!video) {
@@ -105,11 +112,17 @@ const updateVideo = asyncHandler(async (req, res) => {
     if (!title && !description && !thumbnailPath) {
         throw new ApiError(400, "Please provide title, description, or thumbnail");
     }
+
+    if (video?.owner.toString() !== req.user?._id.toString()) {
+        throw new ApiError(403, "You are not authorized to update this video");
+    }
+
     if (thumbnailPath) {
         const thumbnailUrl = await uploadOnCloudinary(thumbnailPath);
         if (!thumbnailUrl.url) {
             throw new ApiError(500, "Failed to upload thumbnail");
         }
+
         const updatedVideo = await Video.findByIdAndUpdate(
             video,
             {
@@ -160,8 +173,16 @@ const deleteVideo = asyncHandler(async (req, res) => {
 
     const video = await Video.findById(videoId);
 
+    if (!videoId.trim() || !isValidObjectId(videoId)) {
+        throw new ApiError(400, "Invalid video id")
+    }
+
     if (!video) {
         throw new ApiError(404, "Video not found")
+    }
+
+    if (video?.owner.toString() !== req.user?._id.toString()) {
+        throw new ApiError(403, "You are not authorized to update this video");
     }
 
     const deletedVideo = await Video.findByIdAndDelete(video);
@@ -181,11 +202,17 @@ const deleteVideo = asyncHandler(async (req, res) => {
 const togglePublishStatus = asyncHandler(async (req, res) => {
     const { videoId } = req.params
 
+    if (!videoId.trim() || !isValidObjectId(videoId)) {
+        throw new ApiError(400, "Invalid video id")
+    }
 
     const video = await Video.findById(videoId);
 
     if (!video) {
         throw new ApiError(404, "Video not found");
+    }
+    if (video?.owner.toString() !== req.user?._id.toString()) {
+        throw new ApiError(403, "You are not authorized to update this video");
     }
 
     video.isPublished = !video.isPublished;

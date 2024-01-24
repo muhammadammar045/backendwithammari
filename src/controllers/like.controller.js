@@ -1,5 +1,6 @@
 import mongoose, { isValidObjectId } from "mongoose"
 import { Like } from "../models/like.model.js"
+import { User } from "../models/user.model.js"
 import { Video } from "../models/video.model.js"
 import { Comment } from "../models/comment.model.js"
 import { Tweet } from "../models/tweet.model.js"
@@ -8,8 +9,8 @@ import ApiResponse from "../utils/ApiResponse.js"
 import asyncHandler from "../utils/asyncHandler.js"
 
 const toggleVideoLike = asyncHandler(async (req, res) => {
+
     const { videoId } = req.params
-    //TODO: toggle like on video
 
     if (!videoId?.trim() || !isValidObjectId(videoId)) {
         throw new ApiError(400, "Invalid video id")
@@ -52,7 +53,7 @@ const toggleVideoLike = asyncHandler(async (req, res) => {
     return res
         .status(200)
         .json(
-            new ApiResponse(200, {}, message)
+            new ApiResponse(200, video?.title, message)
         )
 
 
@@ -60,7 +61,6 @@ const toggleVideoLike = asyncHandler(async (req, res) => {
 
 const toggleCommentLike = asyncHandler(async (req, res) => {
     const { commentId } = req.params
-    //TODO: toggle like on comment
 
     if (!commentId?.trim() || !isValidObjectId(commentId)) {
         throw new ApiError(400, "Invalid comment id")
@@ -113,7 +113,6 @@ const toggleCommentLike = asyncHandler(async (req, res) => {
 
 const toggleTweetLike = asyncHandler(async (req, res) => {
     const { tweetId } = req.params
-    //TODO: toggle like on tweet
 
     if (!tweetId?.trim() || !isValidObjectId(tweetId)) {
         throw new ApiError(400, "Invalid Tweet id")
@@ -164,7 +163,65 @@ const toggleTweetLike = asyncHandler(async (req, res) => {
 )
 
 const getLikedVideos = asyncHandler(async (req, res) => {
-    //TODO: get all liked videos
+
+    const likedVideosOwner = await Like.findOne({ likedBy: req.user?._id });
+
+    if (!likedVideosOwner) {
+        throw new ApiError(401, "Unauthorized to get liked videos");
+    }
+
+    const likedVideos = await Like.aggregate([
+        {
+            $match: {
+                likedBy: req.user?._id,
+                video: {
+                    $exists: true
+                }
+            }
+        },
+        {
+            $lookup: {
+                from: "videos",
+                localField: "video",
+                foreignField: "_id",
+                as: "likedVideos",
+                pipeline: [
+                    {
+                        $project: {
+                            thumbnail: 1,
+                            title: 1,
+                            views: 1,
+                            videoFile: 1
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            $addFields: {
+                likedVideos: {
+                    $first: "$likedVideos"
+                }
+            }
+        },
+        {
+            $project: {
+                _id: 0,
+                likedVideos: 1,
+            }
+        },
+        {
+            $replaceRoot: { newRoot: "$likedVideos" }
+        }
+
+
+    ])
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(200, { likedVideos, videosCount: likedVideos.length }, "Liked Videos fetched Successfully")
+        )
 
 
 })
