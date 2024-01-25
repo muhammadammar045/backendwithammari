@@ -10,8 +10,6 @@ import asyncHandler from "../utils/asyncHandler.js"
 const createPlaylist = asyncHandler(async (req, res) => {
     const { name, description } = req.body
 
-    //TODO: create playlist
-
     if (!name || !description) {
         throw new ApiError(400, "Playlist name and description are required")
     }
@@ -111,22 +109,19 @@ const addVideoToPlaylist = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Video already exists in playlist")
     }
 
-    if (playlist?.owner?.toString() !== req.user?._id.toString()) {
-        throw new ApiError(403, "You are not allowed to add videos to this playlist")
-    }
+    await playlist.videos.push(videoId)
 
-    const addVideoToPlaylist = await Playlist.videos.push(videoId)
+    const updatedPlaylist = await playlist.save()
 
-    if (!addVideoToPlaylist) {
+    if (!updatedPlaylist) {
         throw new ApiError(500, "Failed to add video to playlist")
     }
 
     return res
         .status(200)
         .json(
-            new ApiResponse(200, playlist, "Video added to playlist successfully")
+            new ApiResponse(200, updatedPlaylist, "Video added to playlist successfully")
         )
-
 })
 
 const removeVideoFromPlaylist = asyncHandler(async (req, res) => {
@@ -154,16 +149,17 @@ const removeVideoFromPlaylist = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Video Does not exists in playlist")
     }
 
-    const removeVideoFromPlaylist = await Playlist.videos.pull(videoId)
+    await playlist.videos.pull(videoId)
+    const updatedPlaylist = await playlist.save()
 
-    if (!removeVideoFromPlaylist) {
+    if (!updatedPlaylist) {
         throw new ApiError(500, "Failed to remove video from playlist")
     }
 
     return res
         .status(200)
         .json(
-            new ApiResponse(200, playlist, "Video removed from playlist successfully")
+            new ApiResponse(200, updatedPlaylist, "Video removed from playlist successfully")
         )
 
 
